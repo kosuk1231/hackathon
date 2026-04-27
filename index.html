@@ -1556,6 +1556,117 @@
     .login-hero { padding: 36px 24px 32px; }
   }
 
+  /* === 최종 결과 === */
+  .winners-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 920px) {
+    .winners-grid { grid-template-columns: 1fr; }
+  }
+  @keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .winner-card {
+    background: linear-gradient(180deg, #ffffff 0%, #fcfaf6 100%);
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--red);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 12px 32px rgba(255, 0, 60, 0.08);
+    position: relative;
+    overflow: hidden;
+    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+  .winner-card:nth-child(1) { animation-delay: 0.1s; }
+  .winner-card:nth-child(2) { animation-delay: 0.2s; }
+  .winner-card:nth-child(3) { animation-delay: 0.3s; }
+
+  .winner-sector {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 20px;
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .winner-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid var(--line);
+    transition: all 0.2s ease;
+  }
+  .winner-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: var(--ink-soft);
+  }
+  .winner-row:last-child { margin-bottom: 0; }
+  .winner-medal {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+  }
+  .winner-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .winner-team {
+    font-family: var(--font-display);
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .winner-org {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .winner-score {
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--red);
+    font-size: 18px;
+    background: var(--red-soft);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .winner-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink);
+  }
+  .winner-title-badge {
+    background: var(--red);
+    color: white;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    animation: blink 2s infinite;
+  }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -1811,6 +1922,8 @@
 
     <h3 style="margin-bottom: 12px;">심사위원 진행 상태</h3>
     <div class="admin-status-grid" id="admin-status-grid"></div>
+
+    <div id="final-winners-section" style="display:none; margin-top: 32px;"></div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px; margin-top: 8px;">
       <h3>실시간 순위표</h3>
@@ -2762,6 +2875,61 @@ function renderAdmin() {
     `;
     tbody.appendChild(tr);
   });
+
+  // 심사 완료 확인 및 최종 결과 표시
+  let allComplete = true;
+  for (let j = 1; j <= 3; j++) {
+    let scored = 0;
+    TEAMS.forEach(t => { if (hasAnyScore(j, t.id)) scored++; });
+    if (scored < TEAMS.length) allComplete = false;
+  }
+
+  const winnersContainer = document.getElementById('final-winners-section');
+  if (allComplete) {
+    const sectors = {};
+    rows.forEach(r => {
+      if (!sectors[r.team.sector]) sectors[r.team.sector] = [];
+      sectors[r.team.sector].push(r);
+    });
+
+    let html = `
+      <div class="winner-title">
+        🏆 부문별 최종 결과
+        <span class="winner-title-badge">FINAL</span>
+      </div>
+      <div class="winners-grid">
+    `;
+
+    const orderedSectors = [...new Set(TEAMS.map(t => t.sector))];
+    
+    orderedSectors.forEach(sec => {
+      const secRows = sectors[sec].sort((a, b) => b.sum - a.sum);
+      html += `<div class="winner-card"><div class="winner-sector">\${escapeHtml(sec)}</div>`;
+      
+      const medals = ['🥇 1등', '🥈 2등', '🥉 3등'];
+      for (let i = 0; i < 3 && i < secRows.length; i++) {
+        const r = secRows[i];
+        html += `
+          <div class="winner-row">
+            <div class="winner-medal">\${medals[i]}</div>
+            <div class="winner-info">
+              <div class="winner-team">\${escapeHtml(r.teamName)}</div>
+              <div class="winner-org">\${escapeHtml(r.team.org)} · \${escapeHtml(r.team.submitter)}</div>
+            </div>
+            <div class="winner-score">\${r.sum}점</div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    });
+    
+    html += `</div>`;
+    winnersContainer.innerHTML = html;
+    winnersContainer.style.display = 'block';
+  } else {
+    winnersContainer.style.display = 'none';
+    winnersContainer.innerHTML = '';
+  }
 }
 
 /* ============================================
