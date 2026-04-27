@@ -2123,9 +2123,9 @@ function enterJudging() {
     if (!hasAnyScore(currentJudgeId, TEAMS[i].id)) { firstUnfinished = i; break; }
   }
   currentTeamIdx = firstUnfinished;
+  showScreen('screen-judging');
   renderJudging();
   updateSyncStatus();
-  showScreen('screen-judging');
 }
 
 function promptAdmin() {
@@ -2342,6 +2342,12 @@ function initSignaturePad() {
   // 캔버스 해상도 설정 (Retina/HiDPI 대응)
   const dpr = window.devicePixelRatio || 1;
   const rect = wrap.getBoundingClientRect();
+
+  // 컨테이너가 아직 보이지 않으면 재시도
+  if (rect.width === 0 || rect.height === 0) {
+    requestAnimationFrame(() => initSignaturePad());
+    return;
+  }
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   canvas.style.width = rect.width + 'px';
