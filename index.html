@@ -2817,6 +2817,15 @@ function makeCanvas(cw, ch) {
   return { canvas, ctx };
 }
 
+function truncateText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (t.length > 0 && ctx.measureText(t + '…').width > maxWidth) {
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+
 function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
   const chars = String(text || '').split('');
   let line = '';
@@ -2847,30 +2856,31 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 async function addCoverPage(doc, cw, ch, pageW, pageH) {
   const { canvas, ctx } = makeCanvas(cw, ch);
   const f = cw / pageW;
+  const FF = "'Pretendard Variable', 'Pretendard', sans-serif";
 
   // 빨간 헤더
   ctx.fillStyle = '#ff003c';
-  ctx.fillRect(0, 0, cw, 110 * f);
+  ctx.fillRect(0, 0, cw, 90 * f);
 
   ctx.fillStyle = 'white';
-  ctx.font = `bold ${36 * f}px sans-serif`;
-  ctx.fillText('열매똑똑 해커톤', 25 * f, 30 * f);
-  ctx.font = `bold ${44 * f}px sans-serif`;
-  ctx.fillText('본선 심사 결과 보고서', 25 * f, 55 * f);
+  ctx.font = `bold ${28 * f}px ${FF}`;
+  ctx.fillText('열매똑똑 해커톤', 20 * f, 25 * f);
+  ctx.font = `bold ${24 * f}px ${FF}`;
+  ctx.fillText('본선 심사 결과 보고서', 20 * f, 52 * f);
 
-  ctx.font = `${14 * f}px sans-serif`;
+  ctx.font = `${11 * f}px ${FF}`;
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText('2026 FINAL ROUND · 9팀 종합 평가', 25 * f, 92 * f);
+  ctx.fillText('2026 FINAL ROUND · 9팀 종합 평가', 20 * f, 75 * f);
 
   // 본문
   ctx.fillStyle = '#141416';
-  ctx.font = `bold ${20 * f}px sans-serif`;
-  ctx.fillText('심사 개요', 25 * f, 130 * f);
+  ctx.font = `bold ${16 * f}px ${FF}`;
+  ctx.fillText('심사 개요', 20 * f, 110 * f);
 
   ctx.fillStyle = '#4a4a4a';
-  ctx.font = `${13 * f}px sans-serif`;
-  let y = 145 * f;
-  const lh = 9 * f;
+  ctx.font = `${11 * f}px ${FF}`;
+  let y = 128 * f;
+  const lh = 11 * f;
   const overview = [
     `■ 발행일: ${formatToday()}`,
     `■ 본선 진출: 9팀 (3개 부문 × 3팀)`,
@@ -2879,31 +2889,39 @@ async function addCoverPage(doc, cw, ch, pageW, pageH) {
     ``,
     `[심사위원 명단]`
   ];
-  overview.forEach(line => { ctx.fillText(line, 25 * f, y); y += lh; });
+  overview.forEach(line => { ctx.fillText(line, 20 * f, y); y += lh; });
 
-  ctx.font = `bold ${13 * f}px sans-serif`;
+  ctx.font = `bold ${11 * f}px ${FF}`;
   ctx.fillStyle = '#141416';
   JUDGES.forEach(j => {
     let cnt = 0;
     TEAMS.forEach(t => { if (hasAnyScore(j.id, t.id)) cnt++; });
-    ctx.fillText(`  · ${j.name} (${j.affiliation})  —  평가완료: ${cnt} / ${TEAMS.length}팀`, 25 * f, y);
+    ctx.fillText(`  · ${j.name} (${j.affiliation})`, 20 * f, y);
+    ctx.font = `${10 * f}px ${FF}`;
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillText(`평가완료: ${cnt}/${TEAMS.length}팀`, 120 * f, y);
+    ctx.font = `bold ${11 * f}px ${FF}`;
+    ctx.fillStyle = '#141416';
     y += lh;
   });
 
   y += lh;
-  ctx.font = `${13 * f}px sans-serif`;
+  ctx.font = `${11 * f}px ${FF}`;
   ctx.fillStyle = '#4a4a4a';
-  ctx.fillText('[본선 진출 9팀]', 25 * f, y); y += lh;
+  ctx.fillText('[본선 진출 9팀]', 20 * f, y); y += lh;
 
-  ctx.font = `${11.5 * f}px sans-serif`;
+  ctx.font = `${10 * f}px ${FF}`;
+  const maxTextW = (pageW - 44) * f;
   TEAMS.forEach(t => {
-    ctx.fillText(`  ${t.id}. ${t.appName}  —  ${t.submitter} (${t.org})  [${t.sector}]`, 25 * f, y);
-    y += lh * 0.85;
+    const line = `${t.id}. ${t.appName} — ${t.submitter} (${t.org}) [${t.sector}]`;
+    const truncated = truncateText(ctx, line, maxTextW);
+    ctx.fillText('  ' + truncated, 20 * f, y);
+    y += lh;
   });
 
   ctx.fillStyle = '#8a8a8a';
-  ctx.font = `${10 * f}px sans-serif`;
-  ctx.fillText('서울특별시사회복지사협회 · 사랑의열매 서울사회복지공동모금회', 25 * f, (pageH - 15) * f);
+  ctx.font = `${9 * f}px ${FF}`;
+  ctx.fillText('서울특별시사회복지사협회 · 사랑의열매 서울사회복지공동모금회', 20 * f, (pageH - 12) * f);
 
   canvasToPdf(doc, canvas, pageW, pageH);
 }
@@ -2911,14 +2929,15 @@ async function addCoverPage(doc, cw, ch, pageW, pageH) {
 async function addSummaryPage(doc, cw, ch, pageW, pageH) {
   const { canvas, ctx } = makeCanvas(cw, ch);
   const f = cw / pageW;
+  const FF = "'Pretendard Variable', 'Pretendard', sans-serif";
 
   ctx.fillStyle = '#141416';
-  ctx.font = `bold ${22 * f}px sans-serif`;
-  ctx.fillText('종합 순위표', 20 * f, 18 * f);
+  ctx.font = `bold ${16 * f}px ${FF}`;
+  ctx.fillText('종합 순위표', 20 * f, 20 * f);
 
   ctx.fillStyle = '#4a4a4a';
-  ctx.font = `${11 * f}px sans-serif`;
-  ctx.fillText('각 심사위원 점수 합계 기준 (만점 100점, 합계 300점)', 20 * f, 32 * f);
+  ctx.font = `${10 * f}px ${FF}`;
+  ctx.fillText('각 심사위원 점수 합계 기준 (만점 100점, 합계 300점)', 20 * f, 33 * f);
 
   const rows = TEAMS.map(t => {
     const j1Has = hasAnyScore(1, t.id);
@@ -2941,49 +2960,69 @@ async function addSummaryPage(doc, cw, ch, pageW, pageH) {
     prevSum = r.sum;
   });
 
-  const startY = 45 * f;
-  const colX = [20, 30, 50, 110, 130, 150, 170, 190].map(v => v * f);
-  const headers = ['순위', '팀ID', '앱명', 'J1', 'J2', 'J3', '합계', '평균'];
+  const startY = 44 * f;
+  const rowH = 11 * f;
+  // 순위(15), ID(15), 앱명(80), J1(18), J2(18), J3(18), 합계(18), 평균(18) = total ~200 leaving margins
+  const colX = [15, 28, 42, 120, 138, 156, 174, 192].map(v => v * f);
+  const colW = [13, 14, 78, 18, 18, 18, 18, 18].map(v => v * f);
+  const headers = ['순위', 'ID', '앱명', 'J1', 'J2', 'J3', '합계', '평균'];
 
+  // 헤더 배경
   ctx.fillStyle = '#141416';
-  ctx.fillRect(20 * f, startY, (pageW - 40) * f, 9 * f);
+  ctx.fillRect(15 * f, startY, (pageW - 30) * f, rowH);
   ctx.fillStyle = 'white';
-  ctx.font = `bold ${11 * f}px sans-serif`;
-  headers.forEach((h, i) => ctx.fillText(h, colX[i] + 2 * f, startY + 2 * f));
+  ctx.font = `bold ${9 * f}px ${FF}`;
+  headers.forEach((h, i) => {
+    if (i >= 3) {
+      ctx.textAlign = 'center';
+      ctx.fillText(h, colX[i] + colW[i] / 2, startY + 3 * f);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.fillText(h, colX[i] + 2 * f, startY + 3 * f);
+    }
+  });
 
-  let y = startY + 11 * f;
-  ctx.font = `${10.5 * f}px sans-serif`;
+  let y = startY + rowH + 1 * f;
   sorted.forEach((r, idx) => {
     const rank = ranks[r.team.id];
     if (rank === 1) {
       ctx.fillStyle = '#ffe4ea';
-      ctx.fillRect(20 * f, y - 1 * f, (pageW - 40) * f, 9 * f);
+      ctx.fillRect(15 * f, y - 1 * f, (pageW - 30) * f, rowH);
     } else if (idx % 2 === 0) {
-      ctx.fillStyle = '#fafafa';
-      ctx.fillRect(20 * f, y - 1 * f, (pageW - 40) * f, 9 * f);
+      ctx.fillStyle = '#f7f7f7';
+      ctx.fillRect(15 * f, y - 1 * f, (pageW - 30) * f, rowH);
     }
+
     ctx.fillStyle = rank === 1 ? '#ff003c' : '#141416';
-    ctx.font = rank === 1 ? `bold ${11 * f}px sans-serif` : `${10.5 * f}px sans-serif`;
-    ctx.fillText(String(rank || '-'), colX[0] + 2 * f, y + 1 * f);
-    ctx.fillText(r.team.id, colX[1] + 2 * f, y + 1 * f);
-    const appName = r.team.appName.length > 22 ? r.team.appName.slice(0, 21) + '…' : r.team.appName;
-    ctx.fillText(appName, colX[2] + 2 * f, y + 1 * f);
+    ctx.font = rank === 1 ? `bold ${9.5 * f}px ${FF}` : `${9.5 * f}px ${FF}`;
+    ctx.fillText(String(rank || '-'), colX[0] + 2 * f, y + 2 * f);
+    ctx.fillText(r.team.id, colX[1] + 2 * f, y + 2 * f);
+
+    // 앱명 truncate to fit column
+    ctx.font = `${9 * f}px ${FF}`;
+    const appNameMax = colW[2] - 4 * f;
+    const appName = truncateText(ctx, r.team.appName, appNameMax);
+    ctx.fillText(appName, colX[2] + 2 * f, y + 2 * f);
+
+    // 점수 columns - center aligned
     ctx.fillStyle = '#141416';
-    ctx.font = `${10.5 * f}px sans-serif`;
-    ctx.fillText(r.j1 !== null ? String(r.j1) : '-', colX[3] + 2 * f, y + 1 * f);
-    ctx.fillText(r.j2 !== null ? String(r.j2) : '-', colX[4] + 2 * f, y + 1 * f);
-    ctx.fillText(r.j3 !== null ? String(r.j3) : '-', colX[5] + 2 * f, y + 1 * f);
-    ctx.font = `bold ${10.5 * f}px sans-serif`;
-    ctx.fillText(r.hasAny ? String(r.sum) : '-', colX[6] + 2 * f, y + 1 * f);
-    ctx.fillText(String(r.avg), colX[7] + 2 * f, y + 1 * f);
-    y += 9 * f;
+    ctx.font = `${9.5 * f}px ${FF}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(r.j1 !== null ? String(r.j1) : '-', colX[3] + colW[3] / 2, y + 2 * f);
+    ctx.fillText(r.j2 !== null ? String(r.j2) : '-', colX[4] + colW[4] / 2, y + 2 * f);
+    ctx.fillText(r.j3 !== null ? String(r.j3) : '-', colX[5] + colW[5] / 2, y + 2 * f);
+    ctx.font = `bold ${9.5 * f}px ${FF}`;
+    ctx.fillText(r.hasAny ? String(r.sum) : '-', colX[6] + colW[6] / 2, y + 2 * f);
+    ctx.fillText(String(r.avg), colX[7] + colW[7] / 2, y + 2 * f);
+    ctx.textAlign = 'left';
+    y += rowH;
   });
 
   ctx.fillStyle = '#8a8a8a';
-  ctx.font = `${9 * f}px sans-serif`;
-  ctx.fillText('열매똑똑 해커톤 본선 심사 — 종합 순위', 20 * f, (pageH - 15) * f);
+  ctx.font = `${8 * f}px ${FF}`;
+  ctx.fillText('열매똑똑 해커톤 본선 심사 — 종합 순위', 20 * f, (pageH - 12) * f);
   ctx.textAlign = 'right';
-  ctx.fillText(formatToday(), (pageW - 20) * f, (pageH - 15) * f);
+  ctx.fillText(formatToday(), (pageW - 20) * f, (pageH - 12) * f);
   ctx.textAlign = 'left';
 
   canvasToPdf(doc, canvas, pageW, pageH);
@@ -2992,28 +3031,30 @@ async function addSummaryPage(doc, cw, ch, pageW, pageH) {
 async function addTeamJudgePage(doc, cw, ch, pageW, pageH, team, judgeId) {
   const { canvas, ctx } = makeCanvas(cw, ch);
   const f = cw / pageW;
+  const FF = "'Pretendard Variable', 'Pretendard', sans-serif";
   const judge = getJudgeById(judgeId);
   const teamData = (scores[judgeId] && scores[judgeId].teams[team.id]) || null;
   if (!teamData) return;
 
   // 헤더 바
   ctx.fillStyle = '#141416';
-  ctx.fillRect(0, 0, cw, 32 * f);
+  ctx.fillRect(0, 0, cw, 30 * f);
   ctx.fillStyle = 'white';
-  ctx.font = `bold ${10 * f}px sans-serif`;
-  ctx.fillText(`JUDGE 0${judgeId}  ·  ${judge.name}  ·  ${judge.affiliation}`, 20 * f, 7 * f);
-  ctx.font = `bold ${20 * f}px sans-serif`;
-  ctx.fillText(`${team.id}. ${team.appName}`, 20 * f, 16 * f);
+  ctx.font = `bold ${9 * f}px ${FF}`;
+  ctx.fillText(`JUDGE 0${judgeId}  ·  ${judge.name}  ·  ${judge.affiliation}`, 20 * f, 8 * f);
+  ctx.font = `bold ${14 * f}px ${FF}`;
+  const teamTitle = truncateText(ctx, `${team.id}. ${team.appName}`, (pageW - 44) * f);
+  ctx.fillText(teamTitle, 20 * f, 19 * f);
 
-  let y = 42 * f;
+  let y = 40 * f;
   ctx.fillStyle = '#4a4a4a';
-  ctx.font = `${10.5 * f}px sans-serif`;
-  ctx.fillText(`부문: ${team.sector}`, 20 * f, y); y += 6 * f;
-  ctx.fillText(`제출자: ${team.submitter}  /  제출기관: ${team.org}`, 20 * f, y); y += 10 * f;
+  ctx.font = `${9.5 * f}px ${FF}`;
+  ctx.fillText(`부문: ${team.sector}`, 20 * f, y); y += 7 * f;
+  ctx.fillText(`제출자: ${team.submitter}  /  제출기관: ${team.org}`, 20 * f, y); y += 12 * f;
 
   ctx.fillStyle = '#141416';
-  ctx.font = `bold ${13 * f}px sans-serif`;
-  ctx.fillText('평가 점수', 20 * f, y); y += 8 * f;
+  ctx.font = `bold ${12 * f}px ${FF}`;
+  ctx.fillText('평가 점수', 20 * f, y); y += 9 * f;
 
   const labels = {
     clarity: '문제 정의의 명확성',
@@ -3027,58 +3068,58 @@ async function addTeamJudgePage(doc, cw, ch, pageW, pageH, team, judgeId) {
     const v = teamData.criteria[c.key] ?? 0;
     const max = c.isDeduction ? '0 / -10' : `/ ${c.max}`;
     ctx.fillStyle = c.isDeduction ? '#faf0df' : '#f3f1ec';
-    ctx.fillRect(20 * f, y, (pageW - 40) * f, 11 * f);
+    ctx.fillRect(20 * f, y, (pageW - 40) * f, 12 * f);
     ctx.fillStyle = c.isDeduction ? '#b87320' : '#141416';
-    ctx.font = `${11 * f}px sans-serif`;
-    ctx.fillText(labels[c.key], 24 * f, y + 2 * f);
-    ctx.font = `bold ${14 * f}px sans-serif`;
+    ctx.font = `${10 * f}px ${FF}`;
+    ctx.fillText(labels[c.key], 24 * f, y + 3 * f);
+    ctx.font = `bold ${12 * f}px ${FF}`;
     const valStr = (v >= 0 ? '+' : '') + v;
     ctx.textAlign = 'right';
-    ctx.fillText(valStr, (pageW - 35) * f, y + 1 * f);
-    ctx.font = `${9 * f}px sans-serif`;
+    ctx.fillText(valStr, (pageW - 38) * f, y + 2 * f);
+    ctx.font = `${8 * f}px ${FF}`;
     ctx.fillStyle = '#8a8a8a';
-    ctx.fillText(max, (pageW - 25) * f, y + 3 * f);
+    ctx.fillText(max, (pageW - 24) * f, y + 4 * f);
     ctx.textAlign = 'left';
-    y += 13 * f;
+    y += 14 * f;
   });
 
   // 합계
   y += 4 * f;
   const total = calculateTeamTotal(judgeId, team.id);
   ctx.fillStyle = '#ff003c';
-  ctx.fillRect(20 * f, y, (pageW - 40) * f, 16 * f);
+  ctx.fillRect(20 * f, y, (pageW - 40) * f, 14 * f);
   ctx.fillStyle = 'white';
-  ctx.font = `bold ${12 * f}px sans-serif`;
-  ctx.fillText('총점', 24 * f, y + 5 * f);
-  ctx.font = `bold ${22 * f}px sans-serif`;
+  ctx.font = `bold ${11 * f}px ${FF}`;
+  ctx.fillText('총점', 24 * f, y + 4 * f);
+  ctx.font = `bold ${18 * f}px ${FF}`;
   ctx.textAlign = 'right';
-  ctx.fillText(String(total), (pageW - 35) * f, y + 1 * f);
-  ctx.font = `${10 * f}px sans-serif`;
-  ctx.fillText('/ 100', (pageW - 25) * f, y + 5 * f);
+  ctx.fillText(String(total), (pageW - 38) * f, y + 1 * f);
+  ctx.font = `${9 * f}px ${FF}`;
+  ctx.fillText('/ 100', (pageW - 24) * f, y + 5 * f);
   ctx.textAlign = 'left';
-  y += 22 * f;
+  y += 20 * f;
 
   // 의견
   ctx.fillStyle = '#141416';
-  ctx.font = `bold ${12 * f}px sans-serif`;
-  ctx.fillText('심사 의견', 20 * f, y); y += 7 * f;
+  ctx.font = `bold ${11 * f}px ${FF}`;
+  ctx.fillText('심사 의견', 20 * f, y); y += 8 * f;
 
   ctx.fillStyle = '#fcfaf6';
-  ctx.fillRect(20 * f, y, (pageW - 40) * f, 50 * f);
+  ctx.fillRect(20 * f, y, (pageW - 40) * f, 45 * f);
   ctx.strokeStyle = '#e5e5e2';
   ctx.lineWidth = 1;
-  ctx.strokeRect(20 * f, y, (pageW - 40) * f, 50 * f);
+  ctx.strokeRect(20 * f, y, (pageW - 40) * f, 45 * f);
   ctx.fillStyle = '#141416';
-  ctx.font = `${10.5 * f}px sans-serif`;
+  ctx.font = `${9.5 * f}px ${FF}`;
   drawWrappedText(ctx, teamData.comment || '(작성된 의견 없음)', 24 * f, y + 4 * f, (pageW - 48) * f, 6 * f);
-  y += 56 * f;
+  y += 50 * f;
 
   // 서명
   ctx.fillStyle = '#141416';
-  ctx.font = `bold ${12 * f}px sans-serif`;
-  ctx.fillText('심사위원 서명', 20 * f, y); y += 7 * f;
+  ctx.font = `bold ${11 * f}px ${FF}`;
+  ctx.fillText('심사위원 서명', 20 * f, y); y += 8 * f;
 
-  const sigBoxH = 38 * f;
+  const sigBoxH = 35 * f;
   ctx.fillStyle = '#fcfaf6';
   ctx.fillRect(20 * f, y, (pageW - 40) * f, sigBoxH);
   ctx.strokeStyle = '#519c90';
@@ -3099,24 +3140,24 @@ async function addTeamJudgePage(doc, cw, ch, pageW, pageH, team, judgeId) {
       ctx.drawImage(img, dx, dy, drawW, drawH);
 
       ctx.fillStyle = '#519c90';
-      ctx.font = `${9 * f}px sans-serif`;
+      ctx.font = `${8 * f}px ${FF}`;
       ctx.textAlign = 'right';
       const sigT = teamData.signedAt ? new Date(teamData.signedAt) : null;
       const sigTs = sigT ?
         `서명: ${sigT.getFullYear()}.${String(sigT.getMonth()+1).padStart(2,'0')}.${String(sigT.getDate()).padStart(2,'0')} ${String(sigT.getHours()).padStart(2,'0')}:${String(sigT.getMinutes()).padStart(2,'0')}` :
         '';
-      if (sigTs) ctx.fillText(sigTs, (pageW - 23) * f, y + sigBoxH - 5 * f);
+      if (sigTs) ctx.fillText(sigTs, (pageW - 23) * f, y + sigBoxH - 4 * f);
       ctx.textAlign = 'left';
     } catch (e) {
       ctx.fillStyle = '#b87320';
-      ctx.font = `italic ${10 * f}px sans-serif`;
+      ctx.font = `italic ${9 * f}px ${FF}`;
       ctx.textAlign = 'center';
       ctx.fillText('(서명 이미지 로드 실패)', pageW * f / 2, y + sigBoxH / 2);
       ctx.textAlign = 'left';
     }
   } else {
     ctx.fillStyle = '#b87320';
-    ctx.font = `italic ${10 * f}px sans-serif`;
+    ctx.font = `italic ${9 * f}px ${FF}`;
     ctx.textAlign = 'center';
     ctx.fillText('(서명 미완료)', pageW * f / 2, y + sigBoxH / 2);
     ctx.textAlign = 'left';
@@ -3124,15 +3165,15 @@ async function addTeamJudgePage(doc, cw, ch, pageW, pageH, team, judgeId) {
 
   y += sigBoxH + 4 * f;
   ctx.fillStyle = '#4a4a4a';
-  ctx.font = `${10 * f}px sans-serif`;
+  ctx.font = `${9 * f}px ${FF}`;
   ctx.fillText(`${judge.name}  ·  ${judge.affiliation}`, 20 * f, y);
 
   // 푸터
   ctx.fillStyle = '#8a8a8a';
-  ctx.font = `${9 * f}px sans-serif`;
-  ctx.fillText(`열매똑똑 해커톤 본선 심사  ·  ${team.id}. ${team.appName}`, 20 * f, (pageH - 15) * f);
+  ctx.font = `${8 * f}px ${FF}`;
+  ctx.fillText(`열매똑똑 해커톤 본선 심사  ·  ${team.id}. ${team.appName}`, 20 * f, (pageH - 12) * f);
   ctx.textAlign = 'right';
-  ctx.fillText(formatToday(), (pageW - 20) * f, (pageH - 15) * f);
+  ctx.fillText(formatToday(), (pageW - 20) * f, (pageH - 12) * f);
   ctx.textAlign = 'left';
 
   canvasToPdf(doc, canvas, pageW, pageH);
