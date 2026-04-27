@@ -2496,7 +2496,13 @@ function prevTeam() {
   }
 }
 
+let isSending = false;
+
 function saveCurrent() {
+  if (isSending) {
+    showToast('전송 중입니다. 잠시만 기다려주세요.', 'warning');
+    return;
+  }
   saveAll();
   const t = TEAMS[currentTeamIdx];
   const data = getCurrentTeamScore();
@@ -2546,6 +2552,9 @@ function updateSyncStatus() {
 }
 
 function sendToSheet(payload) {
+  isSending = true;
+  const saveBtn = document.querySelector('.btn-accent');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '전송 중...'; }
   const el = document.getElementById('sync-status');
   const text = document.getElementById('sync-text');
   if (el) {
@@ -2571,6 +2580,9 @@ function sendToSheet(payload) {
       text.textContent = '전송 실패';
     }
     showToast('로컬 저장됨 / 시트 전송 실패: ' + err.message, 'error');
+  }).finally(() => {
+    isSending = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장 + 시트 전송'; }
   });
 }
 
